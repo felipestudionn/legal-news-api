@@ -20,7 +20,7 @@ class NewsScraper:
         Obtiene noticias de Xataka relacionadas con tecnología y telecomunicaciones
         """
         try:
-            url = 'https://www.xataka.com/categoria/telecomunicaciones'
+            url = 'https://www.xataka.com/categorias/telecomunicaciones'
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'lxml')
