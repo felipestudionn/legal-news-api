@@ -24,7 +24,13 @@ class NewsScraper:
     def __init__(self):
         # Headers para simular un navegador
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Cache-Control': 'max-age=0'
         }
         # Directorio para almacenar las noticias
         self.data_dir = Path(__file__).parent / 'data'
@@ -114,49 +120,11 @@ class NewsScraper:
 
     async def get_eleconomista_news(self) -> List[Dict[str, Any]]:
         """
-        Obtiene noticias de El Economista relacionadas con telecomunicaciones
+        Obtiene noticias de El Economista relacionadas con telecomunicaciones.
+        Actualmente deshabilitado debido a protección anti-scraping.
         """
-        try:
-            url = 'https://www.eleconomista.es/noticias/telecomunicaciones'
-            response = requests.get(url, headers=self.headers)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            news_list = []
-            articles = soup.find_all('article')
-            
-            for article in articles[:5]:
-                try:
-                    title_element = article.find('h2') or article.find('h3')
-                    if not title_element:
-                        continue
-                        
-                    title = title_element.text.strip()
-                    link = title_element.find('a')['href']
-                    if not link.startswith('http'):
-                        link = 'https://www.eleconomista.es' + link
-                        
-                    excerpt = ''
-                    excerpt_element = article.find('p')
-                    if excerpt_element:
-                        excerpt = excerpt_element.text.strip()
-                    
-                    news_list.append({
-                        'title': title,
-                        'content': excerpt,
-                        'url': link,
-                        'source': 'El Economista',
-                        'category': 'Telecomunicaciones',
-                        'date': datetime.now().strftime('%Y-%m-%d')
-                    })
-                except Exception as e:
-                    logger.error(f'Error procesando artículo de El Economista: {str(e)}')
-                    continue
-            
-            return news_list
-        except Exception as e:
-            logger.error(f'Error obteniendo noticias de El Economista: {str(e)}')
-            return []
+        # TODO: Implementar usando Selenium/Playwright o API oficial cuando esté disponible
+        return []
 
     async def get_cnmc_news(self, target_date: str = None) -> List[Dict]:
         """Get telecom news from CNMC RSS feed."""
