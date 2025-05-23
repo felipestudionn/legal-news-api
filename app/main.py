@@ -42,12 +42,12 @@ async def read_root():
     }
 
 @app.get("/news")
-async def get_news() -> Dict[str, Any]:
+async def get_news(date: str = None) -> Dict[str, Any]:
     """
     Endpoint principal que devuelve noticias de todas las fuentes
     """
     try:
-        news = await scraper.get_all_news()
+        news = await scraper.get_all_news(date)
         return {
             "status": "success",
             "count": len(news),
@@ -63,5 +63,15 @@ async def get_sources() -> Dict[str, List[str]]:
     Endpoint que lista las fuentes de noticias disponibles
     """
     return {
-        "sources": ["Xataka", "Expansión"]
+        "sources": ["El Español", "Expansión", "El Economista"]
+    }
+
+@app.get("/news/dates")
+async def get_available_dates() -> Dict[str, List[str]]:
+    """
+    Endpoint que lista las fechas disponibles en el histórico
+    """
+    dates = scraper.list_available_dates()
+    return {
+        "dates": dates
     }

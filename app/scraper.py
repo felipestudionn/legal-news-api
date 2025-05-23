@@ -3,6 +3,11 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from typing import List, Dict, Any
 import logging
+import json
+import os
+from pathlib import Path
+import feedparser
+from dateutil import parser
 
 # Configuración del logging
 logging.basicConfig(level=logging.INFO)
@@ -14,6 +19,9 @@ class NewsScraper:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
+        # Directorio para almacenar las noticias
+        self.data_dir = Path(__file__).parent / 'data'
+        self.data_dir.mkdir(exist_ok=True)
 
     async def get_elespanol_news(self) -> List[Dict[str, Any]]:
         """
@@ -23,7 +31,7 @@ class NewsScraper:
             url = 'https://www.elespanol.com/temas/telecomunicaciones/'
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'lxml')
+            soup = BeautifulSoup(response.text, 'html.parser')
             
             news_list = []
             articles = soup.find_all('article')
@@ -69,7 +77,7 @@ class NewsScraper:
             url = 'https://www.expansion.com/empresas/tecnologia.html'
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'lxml')
+            soup = BeautifulSoup(response.text, 'html.parser')
             
             news_list = []
             articles = soup.find_all('article', class_='news-item')
@@ -105,7 +113,7 @@ class NewsScraper:
             url = 'https://www.eleconomista.es/noticias/telecomunicaciones'
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'lxml')
+            soup = BeautifulSoup(response.text, 'html.parser')
             
             news_list = []
             articles = soup.find_all('article')
@@ -143,17 +151,114 @@ class NewsScraper:
             logger.error(f'Error obteniendo noticias de El Economista: {str(e)}')
             return []
 
-    async def get_all_news(self) -> List[Dict[str, Any]]:
+    async def get_cnmc_news(self) -> List[Dict]:
+        """Get telecom news from CNMC RSS feed."""
+        try:
+            # Fetch RSS feed (filtrado por telecomunicaciones, tag_id=12)
+            feed = feedparser.parse('https://www.cnmc.es/feed/all?field_tags_target_id=12')
+            news_list = []
+            current_date = datetime.now().strftime("%Y-%m-%d")
+
+            # Keywords para identificar noticias de telecomunicaciones
+            telecom_keywords = [
+                'telecom', 'telecomunicaciones', 'operador', 'operadores',
+                'espectro', 'fibra', 'móvil', 'movil', 'telefon',
+                'roaming', '5g', '4g', 'portabilidad', 'numeración',
+                'banda ancha', 'adsl', 'ftth', 'orange', 'vodafone',
+                'telefónica', 'telefonica', 'masmovil', 'yoigo',
+                'comunicaciones electrónicas', 'comunicaciones electronicas',
+                'servicio universal', 'cobertura', 'red', 'redes',
+                'espectro radioeléctrico', 'espectro radioelectrico',
+                'frecuencias', 'mhz', 'gigahertz', 'ghz'
+            ]
+
+            for entry in feed.entries:
+                # Parse publication date
+                pub_date = parser.parse(entry.published)
+                news_date = pub_date.strftime("%Y-%m-%d")
+                
+                # Only include news from today that match telecom keywords
+                if news_date == current_date:
+                    title_lower = entry.title.lower()
+                    desc_lower = entry.get('description', '').lower()
+                    
+                    # Check if any keyword is in title or description
+                    is_telecom = any(keyword in title_lower or keyword in desc_lower 
+                                   for keyword in telecom_keywords)
+                    
+                    if is_telecom:
+                        news = {
+                            'title': entry.title,
+                            'content': entry.get('description', ''),
+                            'url': entry.link,
+                            'source': 'CNMC',
+                            'category': 'Regulación',  # CNMC es el regulador
+                            'date': news_date,
+                            'id': entry.guid.split(' at ')[0]  # CNMC usa IDs numéricos
+                        }
+                        news_list.append(news)
+
+            return news_list
+        except Exception as e:
+            print(f"Error fetching CNMC news: {str(e)}")
+            return []
+
+    def save_news(self, news: List[Dict[str, Any]], date: str = None) -> None:
         """
-        Obtiene y combina noticias de todas las fuentes
+        Guarda las noticias en un archivo JSON por fecha
         """
-        expansion_news = await self.get_expansion_news()
-        elespanol_news = await self.get_elespanol_news()
-        eleconomista_news = await self.get_eleconomista_news()
-        
-        # Combinamos y añadimos IDs
-        all_news = expansion_news + elespanol_news + eleconomista_news
-        for i, news in enumerate(all_news):
-            news['id'] = str(i + 1)
-        
-        return all_news
+        if date is None:
+            date = datetime.now().strftime('%Y-%m-%d')
+            
+        file_path = self.data_dir / f'news_{date}.json'
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(news, f, ensure_ascii=False, indent=2)
+            
+    def load_news(self, date: str = None) -> List[Dict[str, Any]]:
+        """
+        Carga las noticias desde un archivo JSON por fecha
+        """
+        if date is None:
+            date = datetime.now().strftime('%Y-%m-%d')
+            
+        file_path = self.data_dir / f'news_{date}.json'
+        if file_path.exists():
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return []
+
+    def list_available_dates(self) -> List[str]:
+        """
+        Lista las fechas disponibles en el histórico
+        """
+        dates = []
+        for file in self.data_dir.glob('news_*.json'):
+            date = file.name.replace('news_', '').replace('.json', '')
+            dates.append(date)
+        return sorted(dates, reverse=True)
+
+    async def get_all_news(self, date: str = None) -> List[Dict]:
+        """Get news from all sources and combine them."""
+        current_date = datetime.now().strftime("%Y-%m-%d")
+
+        # If no date is provided or the date is today, scrape fresh news
+        if date is None or date == current_date:
+            expansion_news = await self.get_expansion_news()
+            elespanol_news = await self.get_elespanol_news()
+            eleconomista_news = await self.get_eleconomista_news()
+            cnmc_news = await self.get_cnmc_news()
+
+            # Combine all news
+            all_news = []
+            all_news.extend(expansion_news)
+            all_news.extend(elespanol_news)
+            all_news.extend(eleconomista_news)
+            all_news.extend(cnmc_news)
+
+            # Save today's news
+            self.save_news(all_news, current_date)
+
+            return all_news
+        else:
+            # Try to load historical news for the specified date
+            return self.load_news(date)
