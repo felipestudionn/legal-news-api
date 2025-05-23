@@ -18,10 +18,12 @@ app = FastAPI(
 # Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción, especifica los orígenes permitidos
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=["*"],  # Permitir todas las origins en desarrollo
+    allow_credentials=False,  # Importante: debe ser False cuando allow_origins=["*"]
+    allow_methods=["GET"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600
 )
 
 # Instancia del scraper

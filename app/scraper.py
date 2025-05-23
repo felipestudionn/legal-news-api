@@ -11,12 +11,10 @@ from dateutil import parser
 
 # Importar scrapers individuales
 from .scrapers.redes import get_redes_news
-from .scrapers.transformacion_digital import get_transformacion_digital_news
 from .scrapers.cinco_dias import get_cinco_dias_news
 from .scrapers.computerworld import get_computerworld_news
 from .scrapers.silicon import get_silicon_news
 from .scrapers.muycomputer import get_muycomputer_news
-from .scrapers.capital_radio import get_capital_radio_news
 
 # Configuración del logging
 logging.basicConfig(level=logging.INFO)
@@ -251,14 +249,12 @@ class NewsScraper:
             # Reguladores y organismos oficiales
             cnmc_news = await self.get_cnmc_news()
             redes_news = await get_redes_news()
-            transformacion_digital_news = await get_transformacion_digital_news()
             
             # Medios especializados
             cinco_dias_news = await get_cinco_dias_news()
             computerworld_news = await get_computerworld_news()
             silicon_news = await get_silicon_news()
             muycomputer_news = await get_muycomputer_news()
-            capital_radio_news = await get_capital_radio_news()
 
             # Combine all news
             all_news = []
@@ -271,14 +267,12 @@ class NewsScraper:
             # Reguladores y organismos oficiales
             all_news.extend(cnmc_news)
             all_news.extend(redes_news)
-            all_news.extend(transformacion_digital_news)
             
             # Medios especializados
             all_news.extend(cinco_dias_news)
             all_news.extend(computerworld_news)
             all_news.extend(silicon_news)
             all_news.extend(muycomputer_news)
-            all_news.extend(capital_radio_news)
 
             # Save today's news
             self.save_news(all_news, current_date)
