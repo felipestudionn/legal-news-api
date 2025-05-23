@@ -171,32 +171,23 @@ class NewsScraper:
                 'espectro radioeléctrico', 'espectro radioelectrico',
                 'frecuencias', 'mhz', 'gigahertz', 'ghz'
             ]
-
             for entry in feed.entries:
                 # Parse publication date
                 pub_date = parser.parse(entry.published)
                 news_date = pub_date.strftime("%Y-%m-%d")
                 
-                # Only include news from today that match telecom keywords
+                # Solo incluir noticias de hoy
                 if news_date == current_date:
-                    title_lower = entry.title.lower()
-                    desc_lower = entry.get('description', '').lower()
-                    
-                    # Check if any keyword is in title or description
-                    is_telecom = any(keyword in title_lower or keyword in desc_lower 
-                                   for keyword in telecom_keywords)
-                    
-                    if is_telecom:
-                        news = {
-                            'title': entry.title,
-                            'content': entry.get('description', ''),
-                            'url': entry.link,
-                            'source': 'CNMC',
-                            'category': 'Regulación',  # CNMC es el regulador
-                            'date': news_date,
-                            'id': entry.guid.split(' at ')[0]  # CNMC usa IDs numéricos
-                        }
-                        news_list.append(news)
+                    news = {
+                        'title': entry.title,
+                        'content': entry.get('description', ''),
+                        'url': entry.link,
+                        'source': 'CNMC',
+                        'category': 'Regulación',  # CNMC es el regulador
+                        'date': news_date,
+                        'id': entry.guid.split(' at ')[0]  # CNMC usa IDs numéricos
+                    }
+                    news_list.append(news)
 
             return news_list
         except Exception as e:
