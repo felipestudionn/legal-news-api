@@ -158,33 +158,30 @@ class NewsScraper:
             logger.error(f'Error obteniendo noticias de El Economista: {str(e)}')
             return []
 
-    async def get_cnmc_news(self) -> List[Dict]:
+    async def get_cnmc_news(self, target_date: str = None) -> List[Dict]:
         """Get telecom news from CNMC RSS feed."""
         try:
+            logger.info('Obteniendo noticias de CNMC...')
             # Fetch RSS feed (filtrado por telecomunicaciones, tag_id=12)
-            feed = feedparser.parse('https://www.cnmc.es/feed/all?field_tags_target_id=12')
+            feed_url = 'https://www.cnmc.es/feed/all?field_tags_target_id=12'
+            logger.info(f'URL del feed: {feed_url}')
+            feed = feedparser.parse(feed_url)
+            logger.info(f'Entradas encontradas en el feed: {len(feed.entries)}')
             news_list = []
-            current_date = datetime.now().strftime("%Y-%m-%d")
-
-            # Keywords para identificar noticias de telecomunicaciones
-            telecom_keywords = [
-                'telecom', 'telecomunicaciones', 'operador', 'operadores',
-                'espectro', 'fibra', 'móvil', 'movil', 'telefon',
-                'roaming', '5g', '4g', 'portabilidad', 'numeración',
-                'banda ancha', 'adsl', 'ftth', 'orange', 'vodafone',
-                'telefónica', 'telefonica', 'masmovil', 'yoigo',
-                'comunicaciones electrónicas', 'comunicaciones electronicas',
-                'servicio universal', 'cobertura', 'red', 'redes',
-                'espectro radioeléctrico', 'espectro radioelectrico',
-                'frecuencias', 'mhz', 'gigahertz', 'ghz'
-            ]
+            current_date = target_date if target_date else datetime.now().strftime("%Y-%m-%d")
+            logger.info(f'Fecha objetivo: {current_date}')
+            
+            # El feed ya viene filtrado por telecomunicaciones (tag_id=12)
             for entry in feed.entries:
                 # Parse publication date
+                logger.info(f'Procesando entrada: {entry.title}')
                 pub_date = parser.parse(entry.published)
                 news_date = pub_date.strftime("%Y-%m-%d")
+                logger.info(f'Fecha de publicación: {news_date}')
                 
                 # Solo incluir noticias de hoy
                 if news_date == current_date:
+                    logger.info('La noticia es de hoy, incluyéndola...')
                     news = {
                         'title': entry.title,
                         'content': entry.get('description', ''),
@@ -195,6 +192,8 @@ class NewsScraper:
                         'id': entry.guid.split(' at ')[0]  # CNMC usa IDs numéricos
                     }
                     news_list.append(news)
+                else:
+                    logger.info('La noticia no es de hoy, ignorándola...')
 
             return news_list
         except Exception as e:
